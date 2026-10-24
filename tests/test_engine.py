@@ -10,6 +10,51 @@ VIDEO = 'https://www.tiktok.com/@tester/video/6742501081818877190'
 
 
 class URLTests(unittest.TestCase):
+    def test_accepts_tiktok_lite_link_copied_from_phone(self):
+        self.assertEqual(engine.normalize_url('https://lite.tiktok.com/t/ZSgHx4bsG/'),
+                         'https://lite.tiktok.com/t/ZSgHx4bsG/')
+
+    def test_short_facebook_redirect_uses_browser_connection(self):
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.status_code = 302
+        response.headers = {'Location': '/reel/879765251892417/?mibextid=share'}
+        with patch('engine.validate_public_host'), patch('curl_cffi.requests.Session') as factory:
+            factory.return_value.__enter__.return_value.get.return_value = response
+            result = engine.resolve_url('https://www.facebook.com/share/r/TestShare123/')
+            self.assertEqual(result, 'https://www.facebook.com/reel/879765251892417/')
+            self.assertEqual(factory.call_args.kwargs['impersonate'], 'chrome')
+            call = factory.return_value.__enter__.return_value.get.call_args
+            self.assertIs(call.kwargs['allow_redirects'], False)
+
+    def test_short_link_does_not_fetch_untrusted_redirect_target(self):
+        from unittest.mock import MagicMock
+        response = MagicMock(status_code=302, headers={'Location': 'https://127.0.0.1/private'})
+        with patch('engine.validate_public_host'), patch('curl_cffi.requests.Session') as factory:
+            get = factory.return_value.__enter__.return_value.get
+            get.return_value = response
+            with self.assertRaises(engine.DownloadError):
+                engine.resolve_url('https://www.facebook.com/share/r/TestShare123/')
+            self.assertEqual(get.call_count, 1)
+            response.close.assert_called_once()
+
+    def test_short_link_loop_stops_without_repeated_fetch(self):
+        from unittest.mock import MagicMock
+        url = 'https://lite.tiktok.com/t/ZSgHx4bsG/'
+        response = MagicMock(status_code=302, headers={'Location': url})
+        with patch('engine.validate_public_host'), patch('curl_cffi.requests.Session') as factory:
+            get = factory.return_value.__enter__.return_value.get
+            get.return_value = response
+            with self.assertRaisesRegex(engine.DownloadError, 'lặp'):
+                engine.resolve_url(url)
+            self.assertEqual(get.call_count, 1)
+
+    def test_facebook_redirect_preserves_video_id_in_query(self):
+        with patch('engine.validate_public_host'):
+            result = engine.check_redirect_url('https://fb.watch/AbCd/',
+                'https://www.facebook.com/watch/?v=879765251892417&ref=share')
+        self.assertEqual(result, 'https://www.facebook.com/watch/?v=879765251892417')
+
     def test_facebook_video_reel_watch_and_share(self):
         pairs = [
             ('https://www.facebook.com/reel/123456789012345/?mibextid=abc', 'https://www.facebook.com/reel/123456789012345/'),
@@ -31,10 +76,8 @@ class URLTests(unittest.TestCase):
                 engine.normalize_url(url)
 
     def test_tiktok_redirect_cannot_cross_to_facebook(self):
-        import urllib.request
-        request = urllib.request.Request(VIDEO)
         with self.assertRaises(engine.DownloadError):
-            engine.CheckedRedirect().redirect_request(request, None, 302, '', {},
+            engine.check_redirect_url(VIDEO,
                 'https://www.facebook.com/reel/123456789012345/')
 
     def test_extracts_share_link_and_drops_tracking(self):
@@ -62,8 +105,7 @@ class URLTests(unittest.TestCase):
 
     def test_redirect_cannot_leave_tiktok(self):
         with self.assertRaises(engine.DownloadError):
-            engine.CheckedRedirect().redirect_request(None, None, 302, '', {},
-                                                       'http://127.0.0.1/private')
+            engine.check_redirect_url(VIDEO, 'http://127.0.0.1/private')
 
 
 class ProcessingTests(unittest.TestCase):

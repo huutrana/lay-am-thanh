@@ -1,5 +1,13 @@
 # Kiểm chứng bản local — 24/10/2026
 
+## Sửa link chia sẻ từ ứng dụng điện thoại
+
+- Nguyên nhân đã tái hiện: lite.tiktok.com chưa nằm trong hostname cho phép; urllib không mở được Facebook /share/r/ trong khi kết nối Chrome trả redirect sang Reel gốc.
+- Đã thêm TikTok Lite và đổi resolver link rút gọn sang curl-cffi Chrome. Không tự theo redirect: kiểm host, DNS public, cùng nền tảng trước từng bước, tối đa 5 bước và chặn vòng lặp; đóng response sau mỗi bước.
+- Đã tạo test đỏ trước sửa cho link Lite và Facebook share, sau sửa đạt. Toàn bộ Windows: 32 tests, 31 đạt và 1 test Linux được skip.
+- Hai link ứng dụng điện thoại do xếp gửi tải thật local thành công: TikTok Lite 39.312789 giây, 944840 bytes; Facebook share 25.009297 giây, 601905 bytes.
+- Kiểm chứng sau deploy được lưu trong bản bàn giao DEPLOY.md ở workspace; không coi kết quả local thay thế kiểm thử online.
+
 ## Bản mở rộng TikTok & Facebook
 
 - Test Windows: 26 kiểm tra đạt, thêm URL Facebook/Reel/watch/share, domain giả và chặn redirect đổi nền tảng. Có thêm test Linux kiểm cây tiến trình, chạy riêng trên WSL.

@@ -12,9 +12,7 @@ import sys
 import tempfile
 import time
 import unicodedata
-import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 
 MAX_BYTES = 100 * 1024**2
@@ -22,12 +20,11 @@ MAX_DURATION = 600
 TIMEOUT = 180
 VIDEO_FORMAT = 'best[vcodec!=none][acodec!=none]'
 EXTRACTORS = 'TikTok,facebook,facebook:reel'
-TIKTOK_HOSTS = {'tiktok.com', 'www.tiktok.com', 'm.tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'}
+TIKTOK_HOSTS = {'tiktok.com', 'www.tiktok.com', 'm.tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com', 'lite.tiktok.com'}
 FACEBOOK_HOSTS = {'facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com', 'fb.watch', 'www.fb.watch'}
 HOSTS = TIKTOK_HOSTS | FACEBOOK_HOSTS
 VIDEO_PATH = re.compile(r'^/@[^/\s]+/video/[0-9]{10,25}/?$')
 SHORT_PATH = re.compile(r'^/(?:t/)?[a-zA-Z0-9_-]+/?$')
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36'
 
 
 class DownloadError(Exception):
@@ -86,39 +83,53 @@ def validate_public_host(host: str) -> None:
         raise DownloadError('Không kết nối được nền tảng video. Hãy kiểm tra mạng và thử lại.') from None
 
 
-class CheckedRedirect(urllib.request.HTTPRedirectHandler):
-    max_redirections = 5
-    max_repeats = 2
+def check_redirect_url(previous_url: str, new_url: str) -> str:
+    normalized = normalize_url(urllib.parse.urljoin(previous_url, new_url))
+    old_fb = urllib.parse.urlsplit(previous_url).hostname in FACEBOOK_HOSTS
+    new_fb = urllib.parse.urlsplit(normalized).hostname in FACEBOOK_HOSTS
+    if old_fb != new_fb:
+        raise DownloadError('Link chuyển sang nền tảng khác nên không được xử lý.')
+    validate_public_host(urllib.parse.urlsplit(normalized).hostname)
+    return normalized
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        # TikTok can add tracking parameters; these never reach the downloader.
-        normalized = normalize_url(newurl)
-        if req is not None:
-            old_fb = urllib.parse.urlsplit(req.full_url).hostname in FACEBOOK_HOSTS
-            new_fb = urllib.parse.urlsplit(normalized).hostname in FACEBOOK_HOSTS
-            if old_fb != new_fb:
-                raise DownloadError('Link chuyển sang nền tảng khác nên không được xử lý.')
-        validate_public_host(urllib.parse.urlsplit(normalized).hostname)
-        return super().redirect_request(req, fp, code, msg, headers, normalized)
+
+def is_direct_video(url: str) -> bool:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.hostname in FACEBOOK_HOSTS:
+        return parsed.hostname != 'fb.watch' and not parsed.path.startswith('/share/')
+    return bool(VIDEO_PATH.fullmatch(parsed.path))
 
 
 def resolve_url(url: str) -> str:
     url = normalize_url(url)
     validate_public_host(urllib.parse.urlsplit(url).hostname)
-    parsed = urllib.parse.urlsplit(url)
-    facebook_short = parsed.hostname in FACEBOOK_HOSTS and (parsed.hostname == 'fb.watch' or parsed.path.startswith('/share/'))
-    if (parsed.hostname in FACEBOOK_HOSTS and not facebook_short) or VIDEO_PATH.fullmatch(parsed.path):
+    if is_direct_video(url):
         return url
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), CheckedRedirect())
+    # App share links need the same browser TLS connection as Facebook extraction.
+    # Follow redirects manually so curl cannot fetch an unchecked destination.
+    from curl_cffi import requests
     try:
-        request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-        with opener.open(request, timeout=12) as response:
-            result = normalize_url(response.url)
-        final = urllib.parse.urlsplit(result)
-        if not VIDEO_PATH.fullmatch(final.path) and not (final.hostname in FACEBOOK_HOSTS and final.hostname != 'fb.watch' and not final.path.startswith('/share/')):
-            raise DownloadError('Không mở được link rút gọn. Hãy sao chép link video đầy đủ.')
-        return result
-    except (urllib.error.URLError, TimeoutError, OSError):
+        with requests.Session(impersonate='chrome', trust_env=False) as session:
+            visited = {url}
+            for _ in range(5):
+                response = session.get(url, allow_redirects=False, timeout=12, stream=True)
+                try:
+                    if response.status_code not in (301, 302, 303, 307, 308):
+                        raise DownloadError('Link chia sẻ chưa mở được. Hãy sao chép lại link từ video công khai.')
+                    location = response.headers.get('Location')
+                    if not location:
+                        raise DownloadError('Link chia sẻ không có địa chỉ video đích. Hãy sao chép lại link.')
+                    target = check_redirect_url(url, location)
+                finally:
+                    response.close()
+                if target in visited:
+                    raise DownloadError('Link chia sẻ chuyển hướng lặp. Hãy sao chép lại link video.')
+                if is_direct_video(target):
+                    return target
+                visited.add(target)
+                url = target
+            raise DownloadError('Link chia sẻ chuyển hướng quá nhiều lần. Hãy dùng link video đầy đủ.')
+    except (requests.exceptions.RequestException, TimeoutError, OSError):
         raise DownloadError('Không mở được link chia sẻ. Hãy thử link video đầy đủ.') from None
 
 

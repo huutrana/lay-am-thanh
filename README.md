@@ -39,7 +39,7 @@ Dockerfile chạy user không đặc quyền, cài FFmpeg, dùng Waitress. Chạ
 
 ## Phạm vi
 
-- TikTok: video chuẩn, vt/vm và /t/ rút gọn. Luôn lấy audio từ luồng video, tránh luồng nhạc riêng khác nội dung video.
+- TikTok: video chuẩn, vt/vm, /t/ rút gọn và lite.tiktok.com/t/ từ ứng dụng TikTok Lite. Link chia sẻ TikTok/Facebook được mở bằng kết nối trình duyệt Chrome, kiểm tra từng chuyển hướng và giữ ID video. Luôn lấy audio từ luồng video TikTok, tránh luồng nhạc riêng khác nội dung video.
 - Facebook: Reel, page/videos/id, watch/?v=id, video.php?v=id, share/r hoặc share/v, fb.watch. Dùng curl-cffi kết nối kiểu Chrome. Không hỗ trợ trang tài khoản, nhóm, bài viết thông thường hoặc link cần đăng nhập.
 - Một video/lượt, tối đa 10 phút, nguồn 100 MiB, tổng trung gian 200 MiB; MP3 192 kb/s, không tăng chất lượng vượt nguồn.
 - Một worker, hai lượt chờ; sáu yêu cầu/phút/IP; dừng toàn bộ tác vụ sau khoảng ba phút, có thể thêm vài giây dọn tiến trình.
