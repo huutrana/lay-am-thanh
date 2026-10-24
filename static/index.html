@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#185a78">
+  <meta name="description" content="Tải nguyên âm thanh video TikTok hoặc Facebook thành MP3 trên điện thoại và máy tính.">
+  <title>Tải âm thanh</title>
+  <link rel="icon" type="image/png" href="/static/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <a class="brand" href="/" aria-label="Tải âm thanh, trang chủ">
+        <img src="/static/brand-small.webp" class="brand-icon" alt="" width="40" height="40">
+        <span>Tải âm thanh</span>
+      </a>
+      <button id="install" class="quiet-button" type="button" hidden>Cài ứng dụng</button>
+    </header>
+
+    <main>
+      <div class="intro"><div class="intro-copy">
+        <h1>Tải âm thanh<br>TikTok &amp; Facebook.</h1>
+        <p>Giữ nguyên nhạc, lời nói và tiếng động.</p></div>
+        <img class="brand-portrait" src="/static/brand.webp" alt="Biểu tượng riêng của trang tải âm thanh" width="180" height="180">
+      </div>
+
+      <section class="workspace" aria-label="Tải âm thanh">
+        <div class="form-heading"><h2>Link TikTok hoặc Facebook</h2><span class="format">MP3</span></div>
+        <form id="download-form">
+          <label class="sr-only" for="video-url">Link TikTok hoặc Facebook hoặc nội dung chia sẻ có chứa link</label>
+          <div class="input-wrap">
+            <textarea id="video-url" name="url" rows="3" maxlength="4096" required
+              placeholder="https://www.tiktok.com/@.../video/..."
+              autocomplete="off" autocapitalize="off" spellcheck="false"
+              aria-describedby="input-help"></textarea>
+            <button id="paste" class="paste-button" type="button">Dán link</button>
+          </div>
+          <p id="input-help" class="input-help">Dùng nút Chia sẻ → Sao chép liên kết trong TikTok hoặc Facebook.</p>
+          <button class="primary-button" id="submit" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg>
+            <span>Lấy âm thanh</span>
+          </button>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite" hidden>
+          <span id="spinner" class="spinner" aria-hidden="true" hidden></span>
+          <p id="status-text"></p>
+        </div>
+        <button id="reconnect" class="quiet-button reconnect" type="button" hidden>Kiểm tra lại lượt tải</button>
+
+        <div id="result" class="result" hidden>
+          <div class="file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H6v18h12V7l-4-4Z M14 3v5h4M9 12v5m3-7v9m3-6v3"/></svg></div>
+          <div class="file-info"><h3 id="file-title"></h3><p id="file-details"></p></div>
+          <a id="download" class="download-button" href="#" download>Tải MP3</a>
+          <p class="expiry">Tệp sẵn sàng trong 30 phút. Bấm Tải MP3 để lưu về thiết bị.</p>
+        </div>
+      </section>
+
+      <div class="notes">
+        <div class="note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4Zm13-3c3 3 3 7 0 10"/></svg><p>Giữ nguyên nhạc, lời nói và tiếng động trong video.</p></div>
+        <div class="note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><p>Video công khai, tối đa 10 phút và 100 MB.</p></div>
+      </div>
+
+      <details class="help">
+        <summary>Cách tải trên điện thoại và máy tính</summary>
+        <p>Dán link video rồi bấm Lấy âm thanh. Khi tệp sẵn sàng, bấm Tải MP3. Tệp thường nằm trong mục Tệp đã tải xuống của trình duyệt hoặc ứng dụng Files.</p>
+        <p>iPhone: mở bằng Safari, bấm Tải MP3 rồi tìm trong ứng dụng Tệp. Android: mở bằng Chrome và tìm trong mục Tệp đã tải xuống. Máy tính: tệp được lưu theo thiết lập trình duyệt.</p>
+        <p id="connection-note">Cần kết nối mạng để tải âm thanh. Một số video có thể bị TikTok hoặc Facebook chặn tải.</p>
+      </details>
+    </main>
+
+    <footer>Tải âm thanh <span>Không cần đăng nhập</span></footer>
+  </div>
+</body>
+</html>
